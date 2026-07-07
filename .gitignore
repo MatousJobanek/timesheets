@@ -8,6 +8,7 @@ kindergarten-dienstplan
 
 # Fyne cross-compilation output
 fyne-cross/
+tmp-pkg/
 
 # Test
 *.test
