@@ -1,10 +1,13 @@
 # Binary
-timesheets
+kindergarten-dienstplan
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+
+# Fyne cross-compilation output
+fyne-cross/
 
 # Test
 *.test
