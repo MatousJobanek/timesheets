@@ -24,7 +24,7 @@ func DateFromISO(iso string) (string, error) {
 	return t.Format("02.01.2006"), nil
 }
 
-// ParseISO parses YYYY-MM-DD to time.Time.
+// ParseISO parses YYYY-MM-DD to time.Time in local timezone.
 func ParseISO(iso string) (time.Time, error) {
-	return time.Parse("2006-01-02", strings.TrimSpace(iso))
+	return time.ParseInLocation("2006-01-02", strings.TrimSpace(iso), time.Local)
 }

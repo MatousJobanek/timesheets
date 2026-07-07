@@ -51,8 +51,12 @@ func NewYearConfigForm(state *AppState, yc *model.YearConfig) fyne.CanvasObject 
 			}
 			if ycDateRegex.MatchString(fromText) && ycDateRegex.MatchString(toText) {
 				yearStr := strconv.Itoa(yc.Year)
+				toYearStr := yearStr
+				if crossesYear(fromText, toText) {
+					toYearStr = strconv.Itoa(yc.Year + 1)
+				}
 				from, e1 := time.Parse("02.01.2006", fromText+"."+yearStr)
-				to, e2 := time.Parse("02.01.2006", toText+"."+yearStr)
+				to, e2 := time.Parse("02.01.2006", toText+"."+toYearStr)
 				if e1 == nil && e2 == nil && from.After(to) {
 					errs = append(errs, fmt.Sprintf("Freie Tage #%d: Von muss vor Bis liegen", i+1))
 				}

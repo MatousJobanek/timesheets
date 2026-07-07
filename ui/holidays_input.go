@@ -98,6 +98,7 @@ func (hi *HolidaysInput) removeRow(row *HolidayRow, c fyne.CanvasObject) {
 func (hi *HolidaysInput) GetDateRanges() []model.DateRange {
 	var ranges []model.DateRange
 	yearStr := strconv.Itoa(hi.year)
+	nextYearStr := strconv.Itoa(hi.year + 1)
 	for _, r := range hi.rows {
 		toText := r.ToEntry.Text
 		if toText == "" && r.FromEntry.Text != "" {
@@ -105,6 +106,9 @@ func (hi *HolidaysInput) GetDateRanges() []model.DateRange {
 		}
 		fromFull := appendYear(r.FromEntry.Text, yearStr)
 		toFull := appendYear(toText, yearStr)
+		if crossesYear(r.FromEntry.Text, toText) {
+			toFull = appendYear(toText, nextYearStr)
+		}
 		fromISO, _ := model.DateToISO(fromFull)
 		toISO, _ := model.DateToISO(toFull)
 		ranges = append(ranges, model.DateRange{
@@ -142,4 +146,18 @@ func dayMonthFromISO(iso string) string {
 	}
 	// full is "DD.MM.YYYY", return "DD.MM"
 	return full[:5]
+}
+
+// crossesYear returns true if a DD.MM range spans a year boundary
+// (i.e. the To month is earlier than the From month).
+func crossesYear(fromDDMM, toDDMM string) bool {
+	if len(fromDDMM) < 5 || len(toDDMM) < 5 {
+		return false
+	}
+	fromMonth, err1 := strconv.Atoi(fromDDMM[3:5])
+	toMonth, err2 := strconv.Atoi(toDDMM[3:5])
+	if err1 != nil || err2 != nil {
+		return false
+	}
+	return toMonth < fromMonth
 }
