@@ -26,7 +26,7 @@ func intToStr(v int) string {
 var dayLabels = []string{"Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"}
 
 type WorkingHoursGrid struct {
-	Container fyne.CanvasObject
+	Container    fyne.CanvasObject
 	StartEntries [5]*widget.Entry
 	HoursEntries [5]*widget.Entry
 	MinEntries   [5]*widget.Entry

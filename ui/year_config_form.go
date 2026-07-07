@@ -3,8 +3,8 @@ package ui
 import (
 	"fmt"
 	"regexp"
-	"strings"
 	"strconv"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
