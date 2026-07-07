@@ -9,7 +9,7 @@ import (
 	"timesheets/model"
 )
 
-func Generate(emp model.Employee) (*excelize.File, error) {
+func Generate(emp model.Employee, freePeriods []model.DateRange) (*excelize.File, error) {
 	f := excelize.NewFile()
 
 	styles, err := createStyles(f)
@@ -30,7 +30,7 @@ func Generate(emp model.Employee) (*excelize.File, error) {
 			}
 		}
 
-		if err := writeSheet(f, sheetName, emp, month, publicHolidays, styles); err != nil {
+		if err := writeSheet(f, sheetName, emp, month, publicHolidays, freePeriods, styles); err != nil {
 			return nil, fmt.Errorf("Fehler bei %s: %w", sheetName, err)
 		}
 	}
@@ -38,7 +38,7 @@ func Generate(emp model.Employee) (*excelize.File, error) {
 	return f, nil
 }
 
-func writeSheet(f *excelize.File, sheet string, emp model.Employee, month time.Month, publicHolidays map[time.Time]string, styles *Styles) error {
+func writeSheet(f *excelize.File, sheet string, emp model.Employee, month time.Month, publicHolidays map[time.Time]string, freePeriods []model.DateRange, styles *Styles) error {
 	// Header row 1: employee name and month/year
 	f.SetCellValue(sheet, "A1", fmt.Sprintf("%s — %s %d", emp.Name, holidays.MonthName(month), emp.Year))
 	titleStyle, _ := f.NewStyle(&excelize.Style{
@@ -79,7 +79,7 @@ func writeSheet(f *excelize.File, sheet string, emp model.Employee, month time.M
 			rowStyle = styles.PublicHoliday
 			timeStyle = styles.TimeHoliday
 			anmerkung = name
-		} else if label := freePeriodLabel(date, emp.FreePeriods); label != "" {
+		} else if label := freePeriodLabel(date, freePeriods); label != "" {
 			rowStyle = styles.SchoolHoliday
 			timeStyle = styles.TimeSchool
 			anmerkung = label

@@ -1,32 +1,10 @@
 package model
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 )
-
-func SaveConfig(path string, emp Employee) error {
-	data, err := json.MarshalIndent(emp, "", "  ")
-	if err != nil {
-		return fmt.Errorf("JSON-Serialisierung fehlgeschlagen: %w", err)
-	}
-	return os.WriteFile(path, data, 0644)
-}
-
-func LoadConfig(path string) (Employee, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return Employee{}, fmt.Errorf("Datei konnte nicht gelesen werden: %w", err)
-	}
-	var emp Employee
-	if err := json.Unmarshal(data, &emp); err != nil {
-		return Employee{}, fmt.Errorf("JSON-Deserialisierung fehlgeschlagen: %w", err)
-	}
-	return emp, nil
-}
 
 // DateToISO converts DD.MM.YYYY to YYYY-MM-DD.
 func DateToISO(ddmmyyyy string) (string, error) {

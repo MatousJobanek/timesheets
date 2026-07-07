@@ -16,7 +16,7 @@ func main() {
 	a := app.New()
 	a.SetIcon(fyne.NewStaticResource("Icon.png", iconData))
 	w := a.NewWindow("Kindergarten Dienstplan-Generator")
-	w.Resize(fyne.NewSize(700, 800))
-	w.SetContent(ui.BuildForm(w))
+	w.Resize(fyne.NewSize(900, 800))
+	w.SetContent(ui.BuildApp(a, w))
 	w.ShowAndRun()
 }

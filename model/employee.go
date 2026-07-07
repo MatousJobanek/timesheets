@@ -3,13 +3,19 @@ package model
 import "time"
 
 type Employee struct {
-	Name         string       `json:"name"`
-	Year         int          `json:"year"`
-	UseEvenOdd   bool         `json:"use_even_odd"`
-	WeekSchedule WeekSchedule `json:"week_schedule"`
-	EvenSchedule WeekSchedule `json:"even_schedule"`
-	OddSchedule  WeekSchedule `json:"odd_schedule"`
-	FreePeriods  []DateRange  `json:"free_periods"`
+	ID                  string       `json:"id"`
+	Name                string       `json:"name"`
+	Year                int          `json:"year"`
+	UseEvenOdd          bool         `json:"use_even_odd"`
+	WeekSchedule        WeekSchedule `json:"week_schedule"`
+	EvenSchedule        WeekSchedule `json:"even_schedule"`
+	OddSchedule         WeekSchedule `json:"odd_schedule"`
+	FreePeriodOverrides []DateRange  `json:"free_period_overrides"`
+}
+
+type YearConfig struct {
+	Year        int         `json:"year"`
+	FreePeriods []DateRange `json:"free_periods"`
 }
 
 type WeekSchedule struct {

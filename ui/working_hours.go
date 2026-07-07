@@ -1,11 +1,27 @@
 package ui
 
 import (
+	"strconv"
+	"strings"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"timesheets/model"
 )
+
+func strToInt(s string) int {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0
+	}
+	v, _ := strconv.Atoi(s)
+	return v
+}
+
+func intToStr(v int) string {
+	return strconv.Itoa(v)
+}
 
 var dayLabels = []string{"Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"}
 

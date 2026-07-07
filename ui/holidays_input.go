@@ -1,6 +1,9 @@
 package ui
 
 import (
+	"fmt"
+	"strconv"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
@@ -17,10 +20,11 @@ type HolidaysInput struct {
 	Container *fyne.Container
 	rows      []*HolidayRow
 	vbox      *fyne.Container
+	year      int
 }
 
-func NewHolidaysInput() *HolidaysInput {
-	hi := &HolidaysInput{}
+func NewHolidaysInput(year int) *HolidaysInput {
+	hi := &HolidaysInput{year: year}
 	hi.vbox = container.NewVBox()
 
 	addBtn := widget.NewButton("Hinzufügen", func() {
@@ -41,8 +45,8 @@ func (hi *HolidaysInput) AddRow(label, from, to string) {
 		ToEntry:    widget.NewEntry(),
 	}
 	row.LabelEntry.SetPlaceHolder("Bezeichnung")
-	row.FromEntry.SetPlaceHolder("TT.MM.JJJJ")
-	row.ToEntry.SetPlaceHolder("TT.MM.JJJJ")
+	row.FromEntry.SetPlaceHolder("TT.MM")
+	row.ToEntry.SetPlaceHolder("TT.MM")
 
 	row.LabelEntry.SetText(label)
 	row.FromEntry.SetText(from)
@@ -77,9 +81,12 @@ func (hi *HolidaysInput) removeRow(row *HolidayRow, c fyne.CanvasObject) {
 
 func (hi *HolidaysInput) GetDateRanges() []model.DateRange {
 	var ranges []model.DateRange
+	yearStr := strconv.Itoa(hi.year)
 	for _, r := range hi.rows {
-		fromISO, _ := model.DateToISO(r.FromEntry.Text)
-		toISO, _ := model.DateToISO(r.ToEntry.Text)
+		fromFull := appendYear(r.FromEntry.Text, yearStr)
+		toFull := appendYear(r.ToEntry.Text, yearStr)
+		fromISO, _ := model.DateToISO(fromFull)
+		toISO, _ := model.DateToISO(toFull)
 		ranges = append(ranges, model.DateRange{
 			Label: r.LabelEntry.Text,
 			From:  fromISO,
@@ -90,13 +97,29 @@ func (hi *HolidaysInput) GetDateRanges() []model.DateRange {
 }
 
 func (hi *HolidaysInput) SetDateRanges(ranges []model.DateRange) {
-	// Clear existing
 	hi.rows = nil
 	hi.vbox.RemoveAll()
-	// Add new rows
 	for _, dr := range ranges {
-		from, _ := model.DateFromISO(dr.From)
-		to, _ := model.DateFromISO(dr.To)
+		from := dayMonthFromISO(dr.From)
+		to := dayMonthFromISO(dr.To)
 		hi.AddRow(dr.Label, from, to)
 	}
+}
+
+// appendYear turns "DD.MM" into "DD.MM.YYYY"
+func appendYear(ddmm, year string) string {
+	if ddmm == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s.%s", ddmm, year)
+}
+
+// dayMonthFromISO extracts DD.MM from an ISO date (YYYY-MM-DD)
+func dayMonthFromISO(iso string) string {
+	full, err := model.DateFromISO(iso)
+	if err != nil || len(full) < 6 {
+		return ""
+	}
+	// full is "DD.MM.YYYY", return "DD.MM"
+	return full[:5]
 }
