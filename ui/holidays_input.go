@@ -21,6 +21,7 @@ type HolidaysInput struct {
 	rows      []*HolidayRow
 	vbox      *fyne.Container
 	year      int
+	OnChanged func()
 }
 
 func NewHolidaysInput(year int) *HolidaysInput {
@@ -29,6 +30,9 @@ func NewHolidaysInput(year int) *HolidaysInput {
 
 	addBtn := widget.NewButton("Hinzufügen", func() {
 		hi.AddRow("", "", "")
+		if hi.OnChanged != nil {
+			hi.OnChanged()
+		}
 	})
 
 	hi.Container = container.NewVBox(
@@ -46,7 +50,16 @@ func (hi *HolidaysInput) AddRow(label, from, to string) {
 	}
 	row.LabelEntry.SetPlaceHolder("Bezeichnung")
 	row.FromEntry.SetPlaceHolder("TT.MM")
-	row.ToEntry.SetPlaceHolder("TT.MM")
+	row.ToEntry.SetPlaceHolder("= Von")
+
+	notifyChanged := func(_ string) {
+		if hi.OnChanged != nil {
+			hi.OnChanged()
+		}
+	}
+	row.LabelEntry.OnChanged = notifyChanged
+	row.FromEntry.OnChanged = notifyChanged
+	row.ToEntry.OnChanged = notifyChanged
 
 	row.LabelEntry.SetText(label)
 	row.FromEntry.SetText(from)
@@ -77,14 +90,21 @@ func (hi *HolidaysInput) removeRow(row *HolidayRow, c fyne.CanvasObject) {
 		}
 	}
 	hi.vbox.Remove(c)
+	if hi.OnChanged != nil {
+		hi.OnChanged()
+	}
 }
 
 func (hi *HolidaysInput) GetDateRanges() []model.DateRange {
 	var ranges []model.DateRange
 	yearStr := strconv.Itoa(hi.year)
 	for _, r := range hi.rows {
+		toText := r.ToEntry.Text
+		if toText == "" && r.FromEntry.Text != "" {
+			toText = r.FromEntry.Text
+		}
 		fromFull := appendYear(r.FromEntry.Text, yearStr)
-		toFull := appendYear(r.ToEntry.Text, yearStr)
+		toFull := appendYear(toText, yearStr)
 		fromISO, _ := model.DateToISO(fromFull)
 		toISO, _ := model.DateToISO(toFull)
 		ranges = append(ranges, model.DateRange{

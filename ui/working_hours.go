@@ -30,6 +30,7 @@ type WorkingHoursGrid struct {
 	StartEntries [5]*widget.Entry
 	HoursEntries [5]*widget.Entry
 	MinEntries   [5]*widget.Entry
+	OnChanged    func()
 }
 
 func NewWorkingHoursGrid() *WorkingHoursGrid {
@@ -47,10 +48,25 @@ func NewWorkingHoursGrid() *WorkingHoursGrid {
 	for i := 0; i < 5; i++ {
 		g.StartEntries[i] = widget.NewEntry()
 		g.StartEntries[i].SetPlaceHolder("07:00")
+		g.StartEntries[i].OnChanged = func(_ string) {
+			if g.OnChanged != nil {
+				g.OnChanged()
+			}
+		}
 		g.HoursEntries[i] = widget.NewEntry()
 		g.HoursEntries[i].SetPlaceHolder("8")
+		g.HoursEntries[i].OnChanged = func(_ string) {
+			if g.OnChanged != nil {
+				g.OnChanged()
+			}
+		}
 		g.MinEntries[i] = widget.NewEntry()
 		g.MinEntries[i].SetPlaceHolder("0")
+		g.MinEntries[i].OnChanged = func(_ string) {
+			if g.OnChanged != nil {
+				g.OnChanged()
+			}
+		}
 
 		row := container.NewGridWithColumns(4,
 			widget.NewLabel(dayLabels[i]),
@@ -78,11 +94,12 @@ func (g *WorkingHoursGrid) GetSchedule() model.WeekSchedule {
 func (g *WorkingHoursGrid) SetSchedule(ws model.WeekSchedule) {
 	schedules := []model.DaySchedule{ws.Monday, ws.Tuesday, ws.Wednesday, ws.Thursday, ws.Friday}
 	for i, ds := range schedules {
+		if ds.TotalMinutes == 0 && ds.StartTime == "" {
+			continue
+		}
 		g.StartEntries[i].SetText(ds.StartTime)
-		h := ds.TotalMinutes / 60
-		m := ds.TotalMinutes % 60
-		g.HoursEntries[i].SetText(intToStr(h))
-		g.MinEntries[i].SetText(intToStr(m))
+		g.HoursEntries[i].SetText(intToStr(ds.TotalMinutes / 60))
+		g.MinEntries[i].SetText(intToStr(ds.TotalMinutes % 60))
 	}
 }
 

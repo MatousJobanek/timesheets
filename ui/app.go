@@ -160,6 +160,7 @@ func (state *AppState) showEmployee(id string) {
 		state.detailPanel.RemoveAll()
 		state.detailPanel.Add(form)
 		state.detailPanel.Refresh()
+		state.refreshSidebar()
 	}
 
 	state.trySaveAndSwitch(doSwitch)
@@ -182,6 +183,7 @@ func (state *AppState) showYearConfig(year int) {
 		state.detailPanel.RemoveAll()
 		state.detailPanel.Add(form)
 		state.detailPanel.Refresh()
+		state.refreshSidebar()
 	}
 
 	state.trySaveAndSwitch(doSwitch)

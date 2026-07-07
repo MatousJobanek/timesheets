@@ -22,8 +22,21 @@ var empTimeRegex = regexp.MustCompile(`^\d{1,2}:\d{2}$`)
 var empDateRegex = regexp.MustCompile(`^\d{2}\.\d{2}$`)
 
 func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
+	dirty := false
+	saveBtn := widget.NewButton("Speichern", nil)
+	saveBtn.Importance = widget.HighImportance
+	saveBtn.Disable()
+
+	markDirty := func() {
+		if !dirty {
+			dirty = true
+			saveBtn.Enable()
+		}
+	}
+
 	nameEntry := widget.NewEntry()
 	nameEntry.SetText(emp.Name)
+	nameEntry.OnChanged = func(_ string) { markDirty() }
 
 	evenOddCheck := widget.NewCheck("Gerade/Ungerade Wochen verwenden", nil)
 	evenOddCheck.SetChecked(emp.UseEvenOdd)
@@ -38,6 +51,10 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 	} else {
 		normalGrid.SetSchedule(emp.WeekSchedule)
 	}
+
+	normalGrid.OnChanged = markDirty
+	evenGrid.OnChanged = markDirty
+	oddGrid.OnChanged = markDirty
 
 	evenLabel := widget.NewLabel("Gerade Wochen")
 	evenLabel.TextStyle = fyne.TextStyle{Bold: true}
@@ -58,6 +75,7 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 	}
 
 	evenOddCheck.OnChanged = func(checked bool) {
+		markDirty()
 		if checked {
 			normalGrid.Container.Hide()
 			evenOddContainer.Show()
@@ -86,6 +104,7 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 	// Employee-specific overrides
 	overridesInput := NewHolidaysInput(emp.Year)
 	overridesInput.SetDateRanges(emp.FreePeriodOverrides)
+	overridesInput.OnChanged = markDirty
 
 	// Build employee from form
 	buildEmployee := func() model.Employee {
@@ -148,10 +167,15 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 			if r.ToEntry.Text != "" && !empDateRegex.MatchString(r.ToEntry.Text) {
 				errs = append(errs, fmt.Sprintf("Freie Tage #%d: Bis muss im Format TT.MM sein", i+1))
 			}
-			if empDateRegex.MatchString(r.FromEntry.Text) && empDateRegex.MatchString(r.ToEntry.Text) {
+			fromText := r.FromEntry.Text
+			toText := r.ToEntry.Text
+			if toText == "" {
+				toText = fromText
+			}
+			if empDateRegex.MatchString(fromText) && empDateRegex.MatchString(toText) {
 				yearStr := strconv.Itoa(emp.Year)
-				from, e1 := time.Parse("02.01.2006", r.FromEntry.Text+"."+yearStr)
-				to, e2 := time.Parse("02.01.2006", r.ToEntry.Text+"."+yearStr)
+				from, e1 := time.Parse("02.01.2006", fromText+"."+yearStr)
+				to, e2 := time.Parse("02.01.2006", toText+"."+yearStr)
 				if e1 == nil && e2 == nil && from.After(to) {
 					errs = append(errs, fmt.Sprintf("Freie Tage #%d: Von muss vor Bis liegen", i+1))
 				}
@@ -162,7 +186,7 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 	}
 
 	// Action buttons
-	saveBtn := widget.NewButton("Speichern", func() {
+	saveBtn.OnTapped = func() {
 		errs := validate()
 		if len(errs) > 0 {
 			dialog.ShowError(fmt.Errorf("%s", strings.Join(errs, "\n")), state.window)
@@ -174,9 +198,10 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 			dialog.ShowError(err, state.window)
 			return
 		}
+		dirty = false
+		saveBtn.Disable()
 		state.refreshSidebar()
-	})
-	saveBtn.Importance = widget.HighImportance
+	}
 
 	deleteBtn := widget.NewButton("Löschen", func() {
 		dialog.ShowConfirm(
@@ -264,6 +289,9 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 	// Register validate+save callbacks for auto-save on switch/close
 	state.currentValidate = validate
 	state.currentSave = func() {
+		if !dirty {
+			return
+		}
 		updated := buildEmployee()
 		store.UpdateEmployee(state.store, updated)
 	}

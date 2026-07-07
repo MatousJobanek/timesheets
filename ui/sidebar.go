@@ -59,6 +59,9 @@ func (sb *Sidebar) buildList(s *store.Store) {
 			})
 			btn.Alignment = widget.ButtonAlignLeading
 			btn.Importance = widget.LowImportance
+			if y == sb.state.currentYearConfig {
+				btn.Importance = widget.HighImportance
+			}
 			sb.list.Add(btn)
 		}
 	}
@@ -69,6 +72,7 @@ func (sb *Sidebar) buildList(s *store.Store) {
 	addYearConfigBtn.Alignment = widget.ButtonAlignLeading
 	addYearConfigBtn.Importance = widget.LowImportance
 	sb.list.Add(addYearConfigBtn)
+	sb.list.Add(widget.NewSeparator())
 
 	// Employee sections grouped by name
 	type empEntry struct {
@@ -100,6 +104,9 @@ func (sb *Sidebar) buildList(s *store.Store) {
 			})
 			btn.Alignment = widget.ButtonAlignLeading
 			btn.Importance = widget.LowImportance
+			if e.id == sb.state.currentEmployeeID {
+				btn.Importance = widget.HighImportance
+			}
 			sb.list.Add(btn)
 		}
 

@@ -19,8 +19,21 @@ import (
 var ycDateRegex = regexp.MustCompile(`^\d{2}\.\d{2}$`)
 
 func NewYearConfigForm(state *AppState, yc *model.YearConfig) fyne.CanvasObject {
+	dirty := false
+	saveBtn := widget.NewButton("Speichern", nil)
+	saveBtn.Importance = widget.HighImportance
+	saveBtn.Disable()
+
+	markDirty := func() {
+		if !dirty {
+			dirty = true
+			saveBtn.Enable()
+		}
+	}
+
 	holidaysInput := NewHolidaysInput(yc.Year)
 	holidaysInput.SetDateRanges(yc.FreePeriods)
+	holidaysInput.OnChanged = markDirty
 
 	validate := func() []string {
 		var errs []string
@@ -31,10 +44,15 @@ func NewYearConfigForm(state *AppState, yc *model.YearConfig) fyne.CanvasObject 
 			if r.ToEntry.Text != "" && !ycDateRegex.MatchString(r.ToEntry.Text) {
 				errs = append(errs, fmt.Sprintf("Freie Tage #%d: Bis muss im Format TT.MM sein", i+1))
 			}
-			if ycDateRegex.MatchString(r.FromEntry.Text) && ycDateRegex.MatchString(r.ToEntry.Text) {
+			fromText := r.FromEntry.Text
+			toText := r.ToEntry.Text
+			if toText == "" {
+				toText = fromText
+			}
+			if ycDateRegex.MatchString(fromText) && ycDateRegex.MatchString(toText) {
 				yearStr := strconv.Itoa(yc.Year)
-				from, e1 := time.Parse("02.01.2006", r.FromEntry.Text+"."+yearStr)
-				to, e2 := time.Parse("02.01.2006", r.ToEntry.Text+"."+yearStr)
+				from, e1 := time.Parse("02.01.2006", fromText+"."+yearStr)
+				to, e2 := time.Parse("02.01.2006", toText+"."+yearStr)
 				if e1 == nil && e2 == nil && from.After(to) {
 					errs = append(errs, fmt.Sprintf("Freie Tage #%d: Von muss vor Bis liegen", i+1))
 				}
@@ -43,7 +61,7 @@ func NewYearConfigForm(state *AppState, yc *model.YearConfig) fyne.CanvasObject 
 		return errs
 	}
 
-	saveBtn := widget.NewButton("Speichern", func() {
+	saveBtn.OnTapped = func() {
 		errs := validate()
 		if len(errs) > 0 {
 			dialog.ShowError(fmt.Errorf("%s", strings.Join(errs, "\n")), state.window)
@@ -54,9 +72,10 @@ func NewYearConfigForm(state *AppState, yc *model.YearConfig) fyne.CanvasObject 
 			dialog.ShowError(err, state.window)
 			return
 		}
+		dirty = false
+		saveBtn.Disable()
 		state.refreshSidebar()
-	})
-	saveBtn.Importance = widget.HighImportance
+	}
 
 	deleteBtn := widget.NewButton("Löschen", func() {
 		dialog.ShowConfirm(
@@ -93,6 +112,9 @@ func NewYearConfigForm(state *AppState, yc *model.YearConfig) fyne.CanvasObject 
 	// Register validate+save callbacks for auto-save on switch/close
 	state.currentValidate = validate
 	state.currentSave = func() {
+		if !dirty {
+			return
+		}
 		yc.FreePeriods = holidaysInput.GetDateRanges()
 	}
 
