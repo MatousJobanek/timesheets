@@ -73,9 +73,11 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 	evenOddCheck.OnChanged = func(checked bool) {
 		markDirty()
 		if checked {
+			evenGrid.SetSchedule(normalGrid.GetSchedule())
 			normalGrid.Container.Hide()
 			evenOddContainer.Show()
 		} else {
+			normalGrid.SetSchedule(evenGrid.GetSchedule())
 			normalGrid.Container.Show()
 			evenOddContainer.Hide()
 		}

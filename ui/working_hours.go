@@ -4,10 +4,11 @@ import (
 	"strconv"
 	"strings"
 
+	"timesheets/model"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"timesheets/model"
 )
 
 func strToInt(s string) int {
@@ -47,21 +48,19 @@ func NewWorkingHoursGrid() *WorkingHoursGrid {
 
 	for i := 0; i < 5; i++ {
 		g.StartEntries[i] = widget.NewEntry()
-		g.StartEntries[i].SetPlaceHolder("07:00")
+		g.StartEntries[i].SetPlaceHolder("HH:MM")
 		g.StartEntries[i].OnChanged = func(_ string) {
 			if g.OnChanged != nil {
 				g.OnChanged()
 			}
 		}
 		g.HoursEntries[i] = widget.NewEntry()
-		g.HoursEntries[i].SetPlaceHolder("8")
 		g.HoursEntries[i].OnChanged = func(_ string) {
 			if g.OnChanged != nil {
 				g.OnChanged()
 			}
 		}
 		g.MinEntries[i] = widget.NewEntry()
-		g.MinEntries[i].SetPlaceHolder("0")
 		g.MinEntries[i].OnChanged = func(_ string) {
 			if g.OnChanged != nil {
 				g.OnChanged()
@@ -94,12 +93,14 @@ func (g *WorkingHoursGrid) GetSchedule() model.WeekSchedule {
 func (g *WorkingHoursGrid) SetSchedule(ws model.WeekSchedule) {
 	schedules := []model.DaySchedule{ws.Monday, ws.Tuesday, ws.Wednesday, ws.Thursday, ws.Friday}
 	for i, ds := range schedules {
-		if ds.TotalMinutes == 0 && ds.StartTime == "" {
-			continue
-		}
 		g.StartEntries[i].SetText(ds.StartTime)
-		g.HoursEntries[i].SetText(intToStr(ds.TotalMinutes / 60))
-		g.MinEntries[i].SetText(intToStr(ds.TotalMinutes % 60))
+		if ds.TotalMinutes == 0 {
+			g.HoursEntries[i].SetText("")
+			g.MinEntries[i].SetText("")
+		} else {
+			g.HoursEntries[i].SetText(intToStr(ds.TotalMinutes / 60))
+			g.MinEntries[i].SetText(intToStr(ds.TotalMinutes % 60))
+		}
 	}
 }
 
