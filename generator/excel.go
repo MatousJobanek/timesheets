@@ -47,12 +47,13 @@ func writeSheet(f *excelize.File, sheet string, emp model.Employee, month time.M
 	f.SetCellStyle(sheet, "A1", "H1", titleStyle)
 	f.MergeCell(sheet, "A1", "H1")
 
-	// Column headers in row 3
+	// Column headers in row 3 (with top border for the table frame)
 	headers := []string{"Datum", "Wochentag", "Beginn 1", "Ende 1", "Beginn 2", "Ende 2", "Stunden", "Anmerkung"}
 	for i, h := range headers {
 		cell := cellRef(i, 3)
 		f.SetCellValue(sheet, cell, h)
-		f.SetCellStyle(sheet, cell, cell, styles.Header)
+		style := styles.withBorder(f, styles.Header, true, false, i == 0, i == 7)
+		f.SetCellStyle(sheet, cell, cell, style)
 	}
 
 	// Data rows starting at row 4
@@ -94,16 +95,23 @@ func writeSheet(f *excelize.File, sheet string, emp model.Employee, month time.M
 			f.SetCellValue(sheet, cellRef(7, row), anmerkung)
 		}
 
-		// Apply row style to non-time columns
-		for col := 0; col <= 1; col++ {
-			f.SetCellStyle(sheet, cellRef(col, row), cellRef(col, row), rowStyle)
-		}
-		for col := 7; col <= 7; col++ {
-			f.SetCellStyle(sheet, cellRef(col, row), cellRef(col, row), rowStyle)
-		}
-		// Time columns get time-aware style
-		for col := 2; col <= 6; col++ {
-			f.SetCellStyle(sheet, cellRef(col, row), cellRef(col, row), timeStyle)
+		// Apply row style with outer border on edge cells
+		isLastRow := day == daysInMonth-1
+		for col := 0; col <= 7; col++ {
+			var base int
+			if col <= 1 || col == 7 {
+				base = rowStyle
+			} else {
+				base = timeStyle
+			}
+			needLeft := col == 0
+			needRight := col == 7
+			if needLeft || needRight || isLastRow {
+				style := styles.withBorder(f, base, false, isLastRow, needLeft, needRight)
+				f.SetCellStyle(sheet, cellRef(col, row), cellRef(col, row), style)
+			} else {
+				f.SetCellStyle(sheet, cellRef(col, row), cellRef(col, row), base)
+			}
 		}
 	}
 
