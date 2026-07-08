@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -130,12 +131,26 @@ func (hi *HolidaysInput) SetDateRanges(ranges []model.DateRange) {
 	}
 }
 
-// appendYear turns "DD.MM" into "DD.MM.YYYY"
+// normalizeDDMM takes flexible date input (e.g. "3.7.", "13.7", "3.07")
+// and returns zero-padded "DD.MM" format.
+func normalizeDDMM(input string) string {
+	input = strings.TrimSpace(input)
+	input = strings.TrimRight(input, ".")
+	parts := strings.SplitN(input, ".", 2)
+	if len(parts) != 2 {
+		return input
+	}
+	day, _ := strconv.Atoi(parts[0])
+	month, _ := strconv.Atoi(parts[1])
+	return fmt.Sprintf("%02d.%02d", day, month)
+}
+
+// appendYear turns "DD.MM" (or flexible variant) into "DD.MM.YYYY"
 func appendYear(ddmm, year string) string {
 	if ddmm == "" {
 		return ""
 	}
-	return fmt.Sprintf("%s.%s", ddmm, year)
+	return fmt.Sprintf("%s.%s", normalizeDDMM(ddmm), year)
 }
 
 // dayMonthFromISO extracts DD.MM from an ISO date (YYYY-MM-DD)
@@ -151,11 +166,13 @@ func dayMonthFromISO(iso string) string {
 // crossesYear returns true if a DD.MM range spans a year boundary
 // (i.e. the To month is earlier than the From month).
 func crossesYear(fromDDMM, toDDMM string) bool {
-	if len(fromDDMM) < 5 || len(toDDMM) < 5 {
+	from := normalizeDDMM(fromDDMM)
+	to := normalizeDDMM(toDDMM)
+	if len(from) < 5 || len(to) < 5 {
 		return false
 	}
-	fromMonth, err1 := strconv.Atoi(fromDDMM[3:5])
-	toMonth, err2 := strconv.Atoi(toDDMM[3:5])
+	fromMonth, err1 := strconv.Atoi(from[3:5])
+	toMonth, err2 := strconv.Atoi(to[3:5])
 	if err1 != nil || err2 != nil {
 		return false
 	}

@@ -16,7 +16,7 @@ import (
 	"timesheets/store"
 )
 
-var ycDateRegex = regexp.MustCompile(`^\d{2}\.\d{2}$`)
+var ycDateRegex = regexp.MustCompile(`^\d{1,2}\.\d{1,2}\.?$`)
 
 func NewYearConfigForm(state *AppState, yc *model.YearConfig) fyne.CanvasObject {
 	dirty := false
@@ -49,18 +49,18 @@ func NewYearConfigForm(state *AppState, yc *model.YearConfig) fyne.CanvasObject 
 			if toText == "" {
 				toText = fromText
 			}
-			if ycDateRegex.MatchString(fromText) && ycDateRegex.MatchString(toText) {
-				yearStr := strconv.Itoa(yc.Year)
-				toYearStr := yearStr
-				if crossesYear(fromText, toText) {
-					toYearStr = strconv.Itoa(yc.Year + 1)
-				}
-				from, e1 := time.Parse("02.01.2006", fromText+"."+yearStr)
-				to, e2 := time.Parse("02.01.2006", toText+"."+toYearStr)
-				if e1 == nil && e2 == nil && from.After(to) {
-					errs = append(errs, fmt.Sprintf("Freie Tage #%d: Von muss vor Bis liegen", i+1))
-				}
+		if ycDateRegex.MatchString(fromText) && ycDateRegex.MatchString(toText) {
+			yearStr := strconv.Itoa(yc.Year)
+			toYearStr := yearStr
+			if crossesYear(fromText, toText) {
+				toYearStr = strconv.Itoa(yc.Year + 1)
 			}
+			from, e1 := time.Parse("02.01.2006", normalizeDDMM(fromText)+"."+yearStr)
+			to, e2 := time.Parse("02.01.2006", normalizeDDMM(toText)+"."+toYearStr)
+			if e1 == nil && e2 == nil && from.After(to) {
+				errs = append(errs, fmt.Sprintf("Freie Tage #%d: Von muss vor Bis liegen", i+1))
+			}
+		}
 		}
 		return errs
 	}
