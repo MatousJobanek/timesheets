@@ -2,9 +2,11 @@ package ui
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
@@ -14,13 +16,38 @@ import (
 	"timesheets/store"
 )
 
+// scrollInterceptor is a transparent overlay that captures scroll events
+// and forwards them to the parent scroll container. This prevents Entry
+// widgets from consuming vertical scroll events.
+type scrollInterceptor struct {
+	widget.BaseWidget
+	scroll *container.Scroll
+}
+
+func newScrollInterceptor(scroll *container.Scroll) *scrollInterceptor {
+	si := &scrollInterceptor{scroll: scroll}
+	si.ExtendBaseWidget(si)
+	return si
+}
+
+func (si *scrollInterceptor) CreateRenderer() fyne.WidgetRenderer {
+	r := canvas.NewRectangle(color.Transparent)
+	return widget.NewSimpleRenderer(r)
+}
+
+func (si *scrollInterceptor) Scrolled(ev *fyne.ScrollEvent) {
+	if si.scroll != nil {
+		si.scroll.Scrolled(ev)
+	}
+}
+
 type AppState struct {
 	store    *store.Store
 	storeDir string
 	window   fyne.Window
 
-	sidebar     *Sidebar
-	detailPanel *fyne.Container
+	sidebar *Sidebar
+	scroll  *container.Scroll
 
 	currentEmployeeID string
 	currentYearConfig int // 0 = none selected
@@ -45,11 +72,11 @@ func BuildApp(a fyne.App, w fyne.Window) fyne.CanvasObject {
 		window:   w,
 	}
 
-	state.detailPanel = container.NewStack(newPlaceholder())
+	state.scroll = container.NewVScroll(newPlaceholder())
 
 	state.sidebar = NewSidebar(state)
 
-	split := container.NewHSplit(state.sidebar.Container, container.NewVScroll(state.detailPanel))
+	split := container.NewHSplit(state.sidebar.Container, state.scroll)
 	split.SetOffset(0.25)
 
 	w.SetCloseIntercept(func() {
@@ -137,6 +164,13 @@ func (state *AppState) saveStore() error {
 	return store.Save(state.storeDir, state.store)
 }
 
+func (state *AppState) setScrollContent(content fyne.CanvasObject) {
+	interceptor := newScrollInterceptor(state.scroll)
+	state.scroll.Content = container.NewStack(content, interceptor)
+	state.scroll.ScrollToTop()
+	state.scroll.Refresh()
+}
+
 func (state *AppState) showEmployee(id string) {
 	doSwitch := func() {
 		state.currentEmployeeID = id
@@ -157,9 +191,7 @@ func (state *AppState) showEmployee(id string) {
 		}
 
 		form := NewEmployeeForm(state, emp)
-		state.detailPanel.RemoveAll()
-		state.detailPanel.Add(form)
-		state.detailPanel.Refresh()
+		state.setScrollContent(form)
 		state.refreshSidebar()
 	}
 
@@ -180,9 +212,7 @@ func (state *AppState) showYearConfig(year int) {
 		}
 
 		form := NewYearConfigForm(state, yc)
-		state.detailPanel.RemoveAll()
-		state.detailPanel.Add(form)
-		state.detailPanel.Refresh()
+		state.setScrollContent(form)
 		state.refreshSidebar()
 	}
 
@@ -192,9 +222,7 @@ func (state *AppState) showYearConfig(year int) {
 func (state *AppState) showPlaceholder() {
 	state.currentEmployeeID = ""
 	state.currentYearConfig = 0
-	state.detailPanel.RemoveAll()
-	state.detailPanel.Add(newPlaceholder())
-	state.detailPanel.Refresh()
+	state.setScrollContent(newPlaceholder())
 }
 
 func (state *AppState) refreshSidebar() {
