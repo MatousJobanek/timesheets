@@ -34,10 +34,6 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 		}
 	}
 
-	nameEntry := widget.NewEntry()
-	nameEntry.SetText(emp.Name)
-	nameEntry.OnChanged = func(_ string) { markDirty() }
-
 	evenOddCheck := widget.NewCheck("Gerade/Ungerade Wochen verwenden", nil)
 	evenOddCheck.SetChecked(emp.UseEvenOdd)
 
@@ -110,7 +106,7 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 	buildEmployee := func() model.Employee {
 		updated := model.Employee{
 			ID:         emp.ID,
-			Name:       nameEntry.Text,
+			Name:       emp.Name,
 			Year:       emp.Year,
 			UseEvenOdd: evenOddCheck.Checked,
 		}
@@ -127,9 +123,6 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 	// Validation
 	validate := func() []string {
 		var errs []string
-		if strings.TrimSpace(nameEntry.Text) == "" {
-			errs = append(errs, "Name darf nicht leer sein")
-		}
 
 		validateGrid := func(g *WorkingHoursGrid, prefix string) {
 			for i := 0; i < 5; i++ {
@@ -262,13 +255,7 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 	})
 
 	// Layout
-	section1 := widget.NewCard(fmt.Sprintf("Mitarbeiterdaten — %d", emp.Year), "",
-		container.NewGridWithColumns(2,
-			widget.NewLabel("Name:"), nameEntry,
-		),
-	)
-
-	section2 := widget.NewCard("Arbeitszeiten", "",
+	section2 := widget.NewCard(fmt.Sprintf("%s — %d", emp.Name, emp.Year), "",
 		container.NewVBox(
 			evenOddCheck,
 			normalGrid.Container,
@@ -301,7 +288,6 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 	}
 
 	return container.NewVBox(
-		section1,
 		section2,
 		section3,
 		section4,

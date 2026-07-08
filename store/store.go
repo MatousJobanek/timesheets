@@ -83,6 +83,14 @@ func UpdateEmployee(s *Store, emp model.Employee) {
 	}
 }
 
+func RenameEmployees(s *Store, oldName, newName string) {
+	for i := range s.Employees {
+		if s.Employees[i].Name == oldName {
+			s.Employees[i].Name = newName
+		}
+	}
+}
+
 func DeleteEmployee(s *Store, id string) {
 	for i, e := range s.Employees {
 		if e.ID == id {

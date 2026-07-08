@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -14,6 +15,31 @@ import (
 	"timesheets/model"
 	"timesheets/store"
 )
+
+type tappableLabel struct {
+	widget.BaseWidget
+	label        *widget.RichText
+	onRightClick func()
+}
+
+func newTappableLabel(text string, onRightClick func()) *tappableLabel {
+	t := &tappableLabel{
+		label:        widget.NewRichTextFromMarkdown(fmt.Sprintf("**%s**", text)),
+		onRightClick: onRightClick,
+	}
+	t.ExtendBaseWidget(t)
+	return t
+}
+
+func (t *tappableLabel) CreateRenderer() fyne.WidgetRenderer {
+	return widget.NewSimpleRenderer(t.label)
+}
+
+func (t *tappableLabel) TappedSecondary(_ *fyne.PointEvent) {
+	if t.onRightClick != nil {
+		t.onRightClick()
+	}
+}
 
 type Sidebar struct {
 	Container *fyne.Container
@@ -94,7 +120,10 @@ func (sb *Sidebar) buildList(s *store.Store) {
 		entries := grouped[name]
 		sort.Slice(entries, func(i, j int) bool { return entries[i].year < entries[j].year })
 
-		empHeader := widget.NewRichTextFromMarkdown(fmt.Sprintf("**%s**", name))
+		n := name
+		empHeader := newTappableLabel(name, func() {
+			sb.showRenameDialog(n)
+		})
 		sb.list.Add(empHeader)
 
 		for _, entry := range entries {
@@ -110,7 +139,6 @@ func (sb *Sidebar) buildList(s *store.Store) {
 			sb.list.Add(btn)
 		}
 
-		n := name
 		addYearBtn := widget.NewButton("    + Jahr", func() {
 			sb.showAddYearForEmployeeDialog(n)
 		})
@@ -118,6 +146,46 @@ func (sb *Sidebar) buildList(s *store.Store) {
 		addYearBtn.Importance = widget.LowImportance
 		sb.list.Add(addYearBtn)
 	}
+}
+
+func (sb *Sidebar) showRenameDialog(oldName string) {
+	nameEntry := widget.NewEntry()
+	nameEntry.SetText(oldName)
+
+	form := dialog.NewForm(
+		"Umbenennen",
+		"Umbenennen",
+		"Abbrechen",
+		[]*widget.FormItem{
+			widget.NewFormItem("Name", nameEntry),
+		},
+		func(ok bool) {
+			if !ok {
+				return
+			}
+			newName := strings.TrimSpace(nameEntry.Text)
+			if newName == "" || newName == oldName {
+				return
+			}
+			store.RenameEmployees(sb.state.store, oldName, newName)
+			if err := sb.state.saveStore(); err != nil {
+				dialog.ShowError(err, sb.state.window)
+			}
+			sb.state.refreshSidebar()
+
+			if sb.state.currentEmployeeID != "" {
+				for _, emp := range sb.state.store.Employees {
+					if emp.ID == sb.state.currentEmployeeID && emp.Name == newName {
+						sb.state.showEmployee(emp.ID)
+						break
+					}
+				}
+			}
+		},
+		sb.state.window,
+	)
+	form.Resize(fyne.NewSize(400, 150))
+	form.Show()
 }
 
 func (sb *Sidebar) showNewEmployeeDialog() {
