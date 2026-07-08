@@ -107,24 +107,52 @@ func writeSheet(f *excelize.File, sheet string, emp model.Employee, month time.M
 		}
 	}
 
-	// SUM formula for Stunden column
+	// Summary section
 	lastDataRow := dataStartRow + daysInMonth - 1
-	sumRow := lastDataRow + 2
-	sumCell := cellRef(6, sumRow)
-	f.SetCellFormula(sheet, sumCell, fmt.Sprintf("SUM(G%d:G%d)", dataStartRow, lastDataRow))
-	f.SetCellStyle(sheet, sumCell, sumCell, styles.TimeFormat)
-
-	labelCell := cellRef(5, sumRow)
-	f.SetCellValue(sheet, labelCell, "Gesamt:")
 	sumLabelStyle, _ := f.NewStyle(&excelize.Style{
 		Font:      &excelize.Font{Bold: true, Size: 10},
 		Alignment: &excelize.Alignment{Horizontal: "right", Vertical: "center"},
 	})
-	f.SetCellStyle(sheet, labelCell, labelCell, sumLabelStyle)
+
+	// Total hours (Gesamt)
+	sumRow := lastDataRow + 2
+	f.SetCellValue(sheet, cellRef(5, sumRow), "Gesamt:")
+	f.SetCellStyle(sheet, cellRef(5, sumRow), cellRef(5, sumRow), sumLabelStyle)
+	f.SetCellFormula(sheet, cellRef(6, sumRow), fmt.Sprintf("SUM(G%d:G%d)", dataStartRow, lastDataRow))
+	f.SetCellStyle(sheet, cellRef(6, sumRow), cellRef(6, sumRow), styles.TimeFormat)
+
+	// Per-weekday hours breakdown
+	weekdaySums := [5]int{}
+	for day := 0; day < daysInMonth; day++ {
+		date := firstDay.AddDate(0, 0, day)
+		wd := date.Weekday()
+		if wd == time.Saturday || wd == time.Sunday {
+			continue
+		}
+		if _, ok := publicHolidays[date]; ok {
+			continue
+		}
+		if freePeriodLabel(date, freePeriods) != "" {
+			continue
+		}
+		schedule := resolveSchedule(emp, date)
+		if schedule.TotalMinutes > 0 {
+			weekdaySums[wd-1] += schedule.TotalMinutes
+		}
+	}
+
+	weekdayNames := []string{"Montag:", "Dienstag:", "Mittwoch:", "Donnerstag:", "Freitag:"}
+	for i, name := range weekdayNames {
+		row := sumRow + 2 + i
+		f.SetCellValue(sheet, cellRef(5, row), name)
+		f.SetCellStyle(sheet, cellRef(5, row), cellRef(5, row), sumLabelStyle)
+		f.SetCellValue(sheet, cellRef(6, row), minutesToExcel(weekdaySums[i]))
+		f.SetCellStyle(sheet, cellRef(6, row), cellRef(6, row), styles.TimeFormat)
+	}
 
 	// Column widths
 	colWidths := map[string]float64{
-		"A": 12, "B": 13, "C": 9, "D": 9, "E": 9, "F": 9, "G": 9, "H": 22,
+		"A": 12, "B": 13, "C": 9, "D": 9, "E": 9, "F": 13, "G": 9, "H": 22,
 	}
 	for col, w := range colWidths {
 		f.SetColWidth(sheet, col, col, w)
