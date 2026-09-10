@@ -80,7 +80,7 @@ func (sb *Sidebar) buildList(s *store.Store) {
 
 		for _, year := range years {
 			y := year
-			btn := widget.NewButton(fmt.Sprintf("    %d", y), func() {
+			btn := widget.NewButton(fmt.Sprintf("    %s", model.FormatSchoolYear(y)), func() {
 				sb.state.showYearConfig(y)
 			})
 			btn.Alignment = widget.ButtonAlignLeading
@@ -128,7 +128,7 @@ func (sb *Sidebar) buildList(s *store.Store) {
 
 		for _, entry := range entries {
 			e := entry
-			btn := widget.NewButton(fmt.Sprintf("    %d", e.year), func() {
+			btn := widget.NewButton(fmt.Sprintf("    %s", model.FormatSchoolYear(e.year)), func() {
 				sb.state.showEmployee(e.id)
 			})
 			btn.Alignment = widget.ButtonAlignLeading
@@ -192,8 +192,7 @@ func (sb *Sidebar) showNewEmployeeDialog() {
 	nameEntry := widget.NewEntry()
 	nameEntry.SetPlaceHolder("Vor- und Nachname")
 
-	yearEntry := widget.NewEntry()
-	yearEntry.SetText(strconv.Itoa(time.Now().Year()))
+	yearEntry := newStartYearEntry()
 
 	form := dialog.NewForm(
 		"Neuer Mitarbeiter",
@@ -201,15 +200,18 @@ func (sb *Sidebar) showNewEmployeeDialog() {
 		"Abbrechen",
 		[]*widget.FormItem{
 			widget.NewFormItem("Name", nameEntry),
-			widget.NewFormItem("Jahr", yearEntry),
+			widget.NewFormItem("Startjahr", yearEntry),
 		},
 		func(ok bool) {
 			if !ok {
 				return
 			}
 			name := nameEntry.Text
-			year, err := strconv.Atoi(yearEntry.Text)
+			year, err := parseStartYear(yearEntry.Text)
 			if err != nil || name == "" {
+				if err != nil {
+					dialog.ShowError(err, sb.state.window)
+				}
 				return
 			}
 			emp := model.Employee{
@@ -230,22 +232,22 @@ func (sb *Sidebar) showNewEmployeeDialog() {
 }
 
 func (sb *Sidebar) showAddYearForEmployeeDialog(name string) {
-	yearEntry := widget.NewEntry()
-	yearEntry.SetText(strconv.Itoa(time.Now().Year()))
+	yearEntry := newStartYearEntry()
 
 	form := dialog.NewForm(
-		fmt.Sprintf("Neues Jahr für %s", name),
+		fmt.Sprintf("Neues Schuljahr für %s", name),
 		"Erstellen",
 		"Abbrechen",
 		[]*widget.FormItem{
-			widget.NewFormItem("Jahr", yearEntry),
+			widget.NewFormItem("Startjahr", yearEntry),
 		},
 		func(ok bool) {
 			if !ok {
 				return
 			}
-			year, err := strconv.Atoi(yearEntry.Text)
+			year, err := parseStartYear(yearEntry.Text)
 			if err != nil {
+				dialog.ShowError(err, sb.state.window)
 				return
 			}
 			emp := model.Employee{
@@ -266,22 +268,22 @@ func (sb *Sidebar) showAddYearForEmployeeDialog(name string) {
 }
 
 func (sb *Sidebar) showNewYearConfigDialog() {
-	yearEntry := widget.NewEntry()
-	yearEntry.SetText(strconv.Itoa(time.Now().Year()))
+	yearEntry := newStartYearEntry()
 
 	form := dialog.NewForm(
-		"Freie Tage für neues Jahr",
+		"Freie Tage für neues Schuljahr",
 		"Erstellen",
 		"Abbrechen",
 		[]*widget.FormItem{
-			widget.NewFormItem("Jahr", yearEntry),
+			widget.NewFormItem("Startjahr", yearEntry),
 		},
 		func(ok bool) {
 			if !ok {
 				return
 			}
-			year, err := strconv.Atoi(yearEntry.Text)
+			year, err := parseStartYear(yearEntry.Text)
 			if err != nil {
+				dialog.ShowError(err, sb.state.window)
 				return
 			}
 			store.EnsureYearConfig(sb.state.store, year)
@@ -295,4 +297,19 @@ func (sb *Sidebar) showNewYearConfigDialog() {
 	)
 	form.Resize(fyne.NewSize(300, 150))
 	form.Show()
+}
+
+func newStartYearEntry() *widget.Entry {
+	yearEntry := widget.NewEntry()
+	yearEntry.SetPlaceHolder("z.B. 2026 (August–Juli)")
+	yearEntry.SetText(strconv.Itoa(model.CurrentSchoolYearStart(time.Now())))
+	return yearEntry
+}
+
+func parseStartYear(text string) (int, error) {
+	year, err := strconv.Atoi(strings.TrimSpace(text))
+	if err != nil || year < 2000 || year > 2100 {
+		return 0, fmt.Errorf("ungültiges Startjahr %q (erwartet z.B. 2026)", text)
+	}
+	return year, nil
 }

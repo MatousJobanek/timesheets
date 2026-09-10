@@ -37,6 +37,21 @@ func PublicHolidays(year int) map[time.Time]string {
 	return holidays
 }
 
+// PublicHolidaysForSchoolYear merges public holidays for start and start+1
+// so August–July of a school year are covered.
+func PublicHolidaysForSchoolYear(start int) map[time.Time]string {
+	first := PublicHolidays(start)
+	second := PublicHolidays(start + 1)
+	merged := make(map[time.Time]string, len(first)+len(second))
+	for k, v := range first {
+		merged[k] = v
+	}
+	for k, v := range second {
+		merged[k] = v
+	}
+	return merged
+}
+
 // IsPublicHoliday checks if the given date is an Austrian public holiday.
 // Returns the holiday name if it is, empty string otherwise.
 func IsPublicHoliday(date time.Time) (bool, string) {

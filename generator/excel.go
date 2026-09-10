@@ -17,12 +17,13 @@ func Generate(emp model.Employee, freePeriods []model.DateRange) (*excelize.File
 		return nil, fmt.Errorf("Stile konnten nicht erstellt werden: %w", err)
 	}
 
-	publicHolidays := holidays.PublicHolidays(emp.Year)
+	publicHolidays := holidays.PublicHolidaysForSchoolYear(emp.Year)
 
-	for month := time.January; month <= time.December; month++ {
-		sheetName := fmt.Sprintf("%s %d", holidays.MonthName(month), emp.Year)
+	for i, month := range model.SchoolYearMonths() {
+		calYear := model.CalendarYear(emp.Year, month)
+		sheetName := fmt.Sprintf("%s %d", holidays.MonthName(month), calYear)
 
-		if month == time.January {
+		if i == 0 {
 			f.SetSheetName("Sheet1", sheetName)
 		} else {
 			if _, err := f.NewSheet(sheetName); err != nil {
@@ -30,7 +31,7 @@ func Generate(emp model.Employee, freePeriods []model.DateRange) (*excelize.File
 			}
 		}
 
-		if err := writeSheet(f, sheetName, emp, month, publicHolidays, freePeriods, styles); err != nil {
+		if err := writeSheet(f, sheetName, emp, month, calYear, publicHolidays, freePeriods, styles); err != nil {
 			return nil, fmt.Errorf("Fehler bei %s: %w", sheetName, err)
 		}
 	}
@@ -38,9 +39,9 @@ func Generate(emp model.Employee, freePeriods []model.DateRange) (*excelize.File
 	return f, nil
 }
 
-func writeSheet(f *excelize.File, sheet string, emp model.Employee, month time.Month, publicHolidays map[time.Time]string, freePeriods []model.DateRange, styles *Styles) error {
+func writeSheet(f *excelize.File, sheet string, emp model.Employee, month time.Month, calYear int, publicHolidays map[time.Time]string, freePeriods []model.DateRange, styles *Styles) error {
 	// Header row 1: employee name and month/year
-	f.SetCellValue(sheet, "A1", fmt.Sprintf("%s — %s %d", emp.Name, holidays.MonthName(month), emp.Year))
+	f.SetCellValue(sheet, "A1", fmt.Sprintf("%s — %s %d", emp.Name, holidays.MonthName(month), calYear))
 	titleStyle, _ := f.NewStyle(&excelize.Style{
 		Font: &excelize.Font{Bold: true, Size: 14},
 	})
@@ -57,8 +58,8 @@ func writeSheet(f *excelize.File, sheet string, emp model.Employee, month time.M
 	}
 
 	// Data rows starting at row 4
-	firstDay := time.Date(emp.Year, month, 1, 0, 0, 0, 0, time.Local)
-	daysInMonth := daysIn(month, emp.Year)
+	firstDay := time.Date(calYear, month, 1, 0, 0, 0, 0, time.Local)
+	daysInMonth := daysIn(month, calYear)
 	dataStartRow := 4
 
 	for day := 0; day < daysInMonth; day++ {

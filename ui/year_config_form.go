@@ -3,9 +3,7 @@ package ui
 import (
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
-	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -50,15 +48,15 @@ func NewYearConfigForm(state *AppState, yc *model.YearConfig) fyne.CanvasObject 
 				toText = fromText
 			}
 		if ycDateRegex.MatchString(fromText) && ycDateRegex.MatchString(toText) {
-			yearStr := strconv.Itoa(yc.Year)
-			toYearStr := yearStr
-			if crossesYear(fromText, toText) {
-				toYearStr = strconv.Itoa(yc.Year + 1)
-			}
-			from, e1 := time.Parse("02.01.2006", normalizeDDMM(fromText)+"."+yearStr)
-			to, e2 := time.Parse("02.01.2006", normalizeDDMM(toText)+"."+toYearStr)
-			if e1 == nil && e2 == nil && from.After(to) {
-				errs = append(errs, fmt.Sprintf("Freie Tage #%d: Von muss vor Bis liegen", i+1))
+			from, e1 := model.ParseDDMMInSchoolYear(fromText, yc.Year)
+			to, e2 := model.ParseDDMMInSchoolYear(toText, yc.Year)
+			if e1 == nil && e2 == nil {
+				if from.After(to) {
+					to = to.AddDate(1, 0, 0)
+				}
+				if from.After(to) {
+					errs = append(errs, fmt.Sprintf("Freie Tage #%d: Von muss vor Bis liegen", i+1))
+				}
 			}
 		}
 		}
@@ -84,7 +82,7 @@ func NewYearConfigForm(state *AppState, yc *model.YearConfig) fyne.CanvasObject 
 	deleteBtn := widget.NewButton("Löschen", func() {
 		dialog.ShowConfirm(
 			"Löschen bestätigen",
-			fmt.Sprintf("Freie Tage für %d wirklich löschen?", yc.Year),
+			fmt.Sprintf("Freie Tage für %s wirklich löschen?", model.FormatSchoolYear(yc.Year)),
 			func(ok bool) {
 				if !ok {
 					return
@@ -101,7 +99,7 @@ func NewYearConfigForm(state *AppState, yc *model.YearConfig) fyne.CanvasObject 
 	})
 
 	section := widget.NewCard(
-		fmt.Sprintf("Gemeinsame freie Tage — %d", yc.Year),
+		fmt.Sprintf("Gemeinsame freie Tage — %s", model.FormatSchoolYear(yc.Year)),
 		"Schulferien, Fenstertage etc. die für alle Mitarbeiter gelten",
 		holidaysInput.Container,
 	)

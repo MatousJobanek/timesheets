@@ -3,9 +3,7 @@ package ui
 import (
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
-	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -168,15 +166,15 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 				toText = fromText
 			}
 		if empDateRegex.MatchString(fromText) && empDateRegex.MatchString(toText) {
-			yearStr := strconv.Itoa(emp.Year)
-			toYearStr := yearStr
-			if crossesYear(fromText, toText) {
-				toYearStr = strconv.Itoa(emp.Year + 1)
-			}
-			from, e1 := time.Parse("02.01.2006", normalizeDDMM(fromText)+"."+yearStr)
-			to, e2 := time.Parse("02.01.2006", normalizeDDMM(toText)+"."+toYearStr)
-			if e1 == nil && e2 == nil && from.After(to) {
-				errs = append(errs, fmt.Sprintf("Freie Tage #%d: Von muss vor Bis liegen", i+1))
+			from, e1 := model.ParseDDMMInSchoolYear(fromText, emp.Year)
+			to, e2 := model.ParseDDMMInSchoolYear(toText, emp.Year)
+			if e1 == nil && e2 == nil {
+				if from.After(to) {
+					to = to.AddDate(1, 0, 0)
+				}
+				if from.After(to) {
+					errs = append(errs, fmt.Sprintf("Freie Tage #%d: Von muss vor Bis liegen", i+1))
+				}
 			}
 		}
 		}
@@ -205,7 +203,7 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 	deleteBtn := widget.NewButton("Löschen", func() {
 		dialog.ShowConfirm(
 			"Löschen bestätigen",
-			fmt.Sprintf("Mitarbeiter %s (%d) wirklich löschen?", emp.Name, emp.Year),
+			fmt.Sprintf("Mitarbeiter %s (%s) wirklich löschen?", emp.Name, model.FormatSchoolYear(emp.Year)),
 			func(ok bool) {
 				if !ok {
 					return
@@ -252,12 +250,12 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 			}
 		}, state.window)
 		saveDialog.SetFilter(storage.NewExtensionFileFilter([]string{".xlsx"}))
-		saveDialog.SetFileName(fmt.Sprintf("Dienstplan_%s_%d.xlsx", updated.Name, updated.Year))
+		saveDialog.SetFileName(fmt.Sprintf("Dienstplan_%s_%s.xlsx", updated.Name, model.FormatSchoolYearFile(updated.Year)))
 		saveDialog.Show()
 	})
 
 	// Layout
-	section2 := widget.NewCard(fmt.Sprintf("%s — %d", emp.Name, emp.Year), "",
+	section2 := widget.NewCard(fmt.Sprintf("%s — %s", emp.Name, model.FormatSchoolYear(emp.Year)), "",
 		container.NewVBox(
 			evenOddCheck,
 			normalGrid.Container,

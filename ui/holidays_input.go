@@ -1,10 +1,6 @@
 package ui
 
 import (
-	"fmt"
-	"strconv"
-	"strings"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
@@ -98,24 +94,23 @@ func (hi *HolidaysInput) removeRow(row *HolidayRow, c fyne.CanvasObject) {
 
 func (hi *HolidaysInput) GetDateRanges() []model.DateRange {
 	var ranges []model.DateRange
-	yearStr := strconv.Itoa(hi.year)
-	nextYearStr := strconv.Itoa(hi.year + 1)
 	for _, r := range hi.rows {
 		toText := r.ToEntry.Text
 		if toText == "" && r.FromEntry.Text != "" {
 			toText = r.FromEntry.Text
 		}
-		fromFull := appendYear(r.FromEntry.Text, yearStr)
-		toFull := appendYear(toText, yearStr)
-		if crossesYear(r.FromEntry.Text, toText) {
-			toFull = appendYear(toText, nextYearStr)
+		from, err1 := model.ParseDDMMInSchoolYear(r.FromEntry.Text, hi.year)
+		to, err2 := model.ParseDDMMInSchoolYear(toText, hi.year)
+		if err1 != nil || err2 != nil {
+			continue
 		}
-		fromISO, _ := model.DateToISO(fromFull)
-		toISO, _ := model.DateToISO(toFull)
+		if from.After(to) {
+			to = to.AddDate(1, 0, 0)
+		}
 		ranges = append(ranges, model.DateRange{
 			Label: r.LabelEntry.Text,
-			From:  fromISO,
-			To:    toISO,
+			From:  from.Format("2006-01-02"),
+			To:    to.Format("2006-01-02"),
 		})
 	}
 	return ranges
@@ -131,28 +126,6 @@ func (hi *HolidaysInput) SetDateRanges(ranges []model.DateRange) {
 	}
 }
 
-// normalizeDDMM takes flexible date input (e.g. "3.7.", "13.7", "3.07")
-// and returns zero-padded "DD.MM" format.
-func normalizeDDMM(input string) string {
-	input = strings.TrimSpace(input)
-	input = strings.TrimRight(input, ".")
-	parts := strings.SplitN(input, ".", 2)
-	if len(parts) != 2 {
-		return input
-	}
-	day, _ := strconv.Atoi(parts[0])
-	month, _ := strconv.Atoi(parts[1])
-	return fmt.Sprintf("%02d.%02d", day, month)
-}
-
-// appendYear turns "DD.MM" (or flexible variant) into "DD.MM.YYYY"
-func appendYear(ddmm, year string) string {
-	if ddmm == "" {
-		return ""
-	}
-	return fmt.Sprintf("%s.%s", normalizeDDMM(ddmm), year)
-}
-
 // dayMonthFromISO extracts DD.MM from an ISO date (YYYY-MM-DD)
 func dayMonthFromISO(iso string) string {
 	full, err := model.DateFromISO(iso)
@@ -161,20 +134,4 @@ func dayMonthFromISO(iso string) string {
 	}
 	// full is "DD.MM.YYYY", return "DD.MM"
 	return full[:5]
-}
-
-// crossesYear returns true if a DD.MM range spans a year boundary
-// (i.e. the To month is earlier than the From month).
-func crossesYear(fromDDMM, toDDMM string) bool {
-	from := normalizeDDMM(fromDDMM)
-	to := normalizeDDMM(toDDMM)
-	if len(from) < 5 || len(to) < 5 {
-		return false
-	}
-	fromMonth, err1 := strconv.Atoi(from[3:5])
-	toMonth, err2 := strconv.Atoi(to[3:5])
-	if err1 != nil || err2 != nil {
-		return false
-	}
-	return toMonth < fromMonth
 }
