@@ -2,7 +2,7 @@ APP_NAME := kindergarten-dienstplan
 APP_ID := com.example.kindergarten-dienstplan
 FYNE_CROSS_FLAGS := -engine podman -app-id $(APP_ID) -icon Icon.png -env GOTOOLCHAIN=auto
 
-.PHONY: build clean run tidy fmt package-windows package-darwin package-linux package-all
+.PHONY: build clean run tidy fmt package-windows package-darwin package-linux package-android package-all
 
 fmt:
 	gofmt -w .
@@ -25,6 +25,9 @@ package-darwin:
 
 package-linux:
 	fyne-cross linux $(FYNE_CROSS_FLAGS)
+
+package-android:
+	fyne-cross android $(FYNE_CROSS_FLAGS)
 
 package-all: package-windows package-darwin package-linux
 
