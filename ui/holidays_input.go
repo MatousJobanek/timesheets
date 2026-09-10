@@ -17,6 +17,7 @@ type HolidaysInput struct {
 	Container *fyne.Container
 	rows      []*HolidayRow
 	vbox      *fyne.Container
+	header    *fyne.Container
 	year      int
 	OnChanged func()
 }
@@ -32,11 +33,28 @@ func NewHolidaysInput(year int) *HolidaysInput {
 		}
 	})
 
+	hi.header = container.NewGridWithColumns(4,
+		widget.NewLabel("Bezeichnung"),
+		widget.NewLabel("Von"),
+		widget.NewLabel("Bis (leer = Von)"),
+		widget.NewLabel(""),
+	)
+	hi.header.Hide()
+
 	hi.Container = container.NewVBox(
+		hi.header,
 		hi.vbox,
 		addBtn,
 	)
 	return hi
+}
+
+func (hi *HolidaysInput) syncHeader() {
+	if len(hi.rows) == 0 {
+		hi.header.Hide()
+	} else {
+		hi.header.Show()
+	}
 }
 
 func (hi *HolidaysInput) AddRow(label, from, to string) {
@@ -47,7 +65,7 @@ func (hi *HolidaysInput) AddRow(label, from, to string) {
 	}
 	row.LabelEntry.SetPlaceHolder("Bezeichnung")
 	row.FromEntry.SetPlaceHolder("TT.MM")
-	row.ToEntry.SetPlaceHolder("= Von")
+	row.ToEntry.SetPlaceHolder("TT.MM")
 
 	notifyChanged := func(_ string) {
 		if hi.OnChanged != nil {
@@ -73,6 +91,7 @@ func (hi *HolidaysInput) AddRow(label, from, to string) {
 
 	hi.rows = append(hi.rows, row)
 	hi.vbox.Add(rowContainer)
+	hi.syncHeader()
 
 	removeBtn.OnTapped = func() {
 		hi.removeRow(row, rowContainer)
@@ -87,6 +106,7 @@ func (hi *HolidaysInput) removeRow(row *HolidayRow, c fyne.CanvasObject) {
 		}
 	}
 	hi.vbox.Remove(c)
+	hi.syncHeader()
 	if hi.OnChanged != nil {
 		hi.OnChanged()
 	}
@@ -119,6 +139,7 @@ func (hi *HolidaysInput) GetDateRanges() []model.DateRange {
 func (hi *HolidaysInput) SetDateRanges(ranges []model.DateRange) {
 	hi.rows = nil
 	hi.vbox.RemoveAll()
+	hi.syncHeader()
 	for _, dr := range ranges {
 		from := dayMonthFromISO(dr.From)
 		to := dayMonthFromISO(dr.To)
