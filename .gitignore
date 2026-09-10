@@ -29,3 +29,6 @@ Thumbs.db
 
 # Generated output
 *.xlsx
+
+.cache 
+.config

@@ -52,7 +52,7 @@ func NewSidebar(state *AppState) *Sidebar {
 	sb.list = container.NewVBox()
 	sb.buildList(state.store)
 
-	newBtn := widget.NewButton("+ Neu", func() {
+	newBtn := widget.NewButton("Neu Mitarbeiter", func() {
 		sb.showNewEmployeeDialog()
 	})
 

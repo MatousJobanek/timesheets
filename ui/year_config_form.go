@@ -79,7 +79,7 @@ func NewYearConfigForm(state *AppState, yc *model.YearConfig) fyne.CanvasObject 
 		state.refreshSidebar()
 	}
 
-	deleteBtn := widget.NewButton("Löschen", func() {
+	deleteBtn := widget.NewButton("Löschen Jahr", func() {
 		dialog.ShowConfirm(
 			"Löschen bestätigen",
 			fmt.Sprintf("Freie Tage für %s wirklich löschen?", model.FormatSchoolYear(yc.Year)),
