@@ -88,9 +88,11 @@ func writeSheet(f *excelize.File, sheet string, emp model.Employee, month time.M
 		} else {
 			schedule := resolveSchedule(emp, date)
 			if schedule.TotalMinutes > 0 {
-				writeTimeBlocks(f, sheet, row, schedule, timeStyle)
+				writeTimeBlocks(f, sheet, row, schedule)
 			}
 		}
+
+		f.SetCellFormula(sheet, cellRef(6, row), stundenFormula(row))
 
 		if anmerkung != "" {
 			f.SetCellValue(sheet, cellRef(7, row), anmerkung)
@@ -130,32 +132,12 @@ func writeSheet(f *excelize.File, sheet string, emp model.Employee, month time.M
 	f.SetCellFormula(sheet, cellRef(6, sumRow), fmt.Sprintf("SUM(G%d:G%d)", dataStartRow, lastDataRow))
 	f.SetCellStyle(sheet, cellRef(6, sumRow), cellRef(6, sumRow), styles.TimeFormat)
 
-	// Per-weekday hours breakdown
-	weekdaySums := [5]int{}
-	for day := 0; day < daysInMonth; day++ {
-		date := firstDay.AddDate(0, 0, day)
-		wd := date.Weekday()
-		if wd == time.Saturday || wd == time.Sunday {
-			continue
-		}
-		if _, ok := publicHolidays[date]; ok {
-			continue
-		}
-		if freePeriodLabel(date, freePeriods) != "" {
-			continue
-		}
-		schedule := resolveSchedule(emp, date)
-		if schedule.TotalMinutes > 0 {
-			weekdaySums[wd-1] += schedule.TotalMinutes
-		}
-	}
-
-	weekdayNames := []string{"Montag:", "Dienstag:", "Mittwoch:", "Donnerstag:", "Freitag:"}
+	weekdayNames := []string{"Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"}
 	for i, name := range weekdayNames {
 		row := sumRow + 2 + i
-		f.SetCellValue(sheet, cellRef(5, row), name)
+		f.SetCellValue(sheet, cellRef(5, row), name+":")
 		f.SetCellStyle(sheet, cellRef(5, row), cellRef(5, row), sumLabelStyle)
-		f.SetCellValue(sheet, cellRef(6, row), minutesToExcel(weekdaySums[i]))
+		f.SetCellFormula(sheet, cellRef(6, row), fmt.Sprintf("SUMIF(B%d:B%d,\"%s\",G%d:G%d)", dataStartRow, lastDataRow, name, dataStartRow, lastDataRow))
 		f.SetCellStyle(sheet, cellRef(6, row), cellRef(6, row), styles.TimeFormat)
 	}
 
@@ -170,28 +152,29 @@ func writeSheet(f *excelize.File, sheet string, emp model.Employee, month time.M
 	return nil
 }
 
-func writeTimeBlocks(f *excelize.File, sheet string, row int, sched model.DaySchedule, timeStyle int) {
+func writeTimeBlocks(f *excelize.File, sheet string, row int, sched model.DaySchedule) {
 	startH, startM := parseTime(sched.StartTime)
 	startMinutes := startH*60 + startM
 
 	if sched.TotalMinutes <= 360 {
-		// No break needed
 		endMinutes := startMinutes + sched.TotalMinutes
 		f.SetCellValue(sheet, cellRef(2, row), timeToExcel(startMinutes))
 		f.SetCellValue(sheet, cellRef(3, row), timeToExcel(endMinutes))
-		f.SetCellValue(sheet, cellRef(6, row), minutesToExcel(sched.TotalMinutes))
-	} else {
-		// Break after 4 hours (240 min)
-		end1Minutes := startMinutes + 240
-		begin2Minutes := end1Minutes + 30
-		end2Minutes := begin2Minutes + (sched.TotalMinutes - 240)
-
-		f.SetCellValue(sheet, cellRef(2, row), timeToExcel(startMinutes))
-		f.SetCellValue(sheet, cellRef(3, row), timeToExcel(end1Minutes))
-		f.SetCellValue(sheet, cellRef(4, row), timeToExcel(begin2Minutes))
-		f.SetCellValue(sheet, cellRef(5, row), timeToExcel(end2Minutes))
-		f.SetCellValue(sheet, cellRef(6, row), minutesToExcel(sched.TotalMinutes))
+		return
 	}
+
+	end1Minutes := startMinutes + 240
+	begin2Minutes := end1Minutes + 30
+	end2Minutes := begin2Minutes + (sched.TotalMinutes - 240)
+
+	f.SetCellValue(sheet, cellRef(2, row), timeToExcel(startMinutes))
+	f.SetCellValue(sheet, cellRef(3, row), timeToExcel(end1Minutes))
+	f.SetCellValue(sheet, cellRef(4, row), timeToExcel(begin2Minutes))
+	f.SetCellValue(sheet, cellRef(5, row), timeToExcel(end2Minutes))
+}
+
+func stundenFormula(row int) string {
+	return fmt.Sprintf(`IF((N(D%d)-N(C%d))+(N(F%d)-N(E%d))=0,"",(D%d-C%d)+(F%d-E%d))`, row, row, row, row, row, row, row, row)
 }
 
 func resolveSchedule(emp model.Employee, date time.Time) model.DaySchedule {
@@ -222,11 +205,6 @@ func freePeriodLabel(date time.Time, periods []model.DateRange) string {
 // timeToExcel converts minutes-since-midnight to an Excel time fraction (0.0–1.0).
 func timeToExcel(totalMinutes int) float64 {
 	return float64(totalMinutes) / 1440.0
-}
-
-// minutesToExcel converts a duration in minutes to an Excel time fraction.
-func minutesToExcel(minutes int) float64 {
-	return float64(minutes) / 1440.0
 }
 
 func parseTime(hhmm string) (int, int) {

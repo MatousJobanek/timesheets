@@ -244,8 +244,8 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 				return
 			}
 			defer writer.Close()
-			path := writer.URI().Path()
-			if writeErr := xlFile.SaveAs(path); writeErr != nil {
+			defer xlFile.Close()
+			if _, writeErr := xlFile.WriteTo(writer); writeErr != nil {
 				dialog.ShowError(writeErr, state.window)
 			}
 		}, state.window)
