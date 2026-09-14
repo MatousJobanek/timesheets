@@ -1,5 +1,5 @@
 APP_NAME := kindergarten-dienstplan
-APP_ID := com.example.kindergarten-dienstplan
+APP_ID := com.example.kindergarten_dienstplan
 FYNE_CROSS_FLAGS := -engine podman -app-id $(APP_ID) -icon Icon.png -env GOTOOLCHAIN=auto
 
 .PHONY: build clean run tidy fmt package-windows package-darwin package-linux package-android package-all
