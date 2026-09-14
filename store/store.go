@@ -11,11 +11,65 @@ import (
 	"timesheets/model"
 )
 
-const storeFileName = "store.json"
+const (
+	storeFileName      = "store.json"
+	setupFormat        = "timesheets-setup"
+	setupFormatVersion = 1
+)
 
 type Store struct {
 	Employees   []model.Employee   `json:"employees"`
 	YearConfigs []model.YearConfig `json:"year_configs"`
+}
+
+type setupDocument struct {
+	Format        string             `json:"format,omitempty"`
+	FormatVersion int                `json:"format_version,omitempty"`
+	Employees     []model.Employee   `json:"employees"`
+	YearConfigs   []model.YearConfig `json:"year_configs"`
+}
+
+func ExportJSON(s *Store) ([]byte, error) {
+	if s == nil {
+		s = &Store{}
+	}
+	doc := setupDocument{
+		Format:        setupFormat,
+		FormatVersion: setupFormatVersion,
+		Employees:     s.Employees,
+		YearConfigs:   s.YearConfigs,
+	}
+	data, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("Einrichtung serialisieren fehlgeschlagen: %w", err)
+	}
+	return data, nil
+}
+
+func ImportJSON(data []byte) (*Store, error) {
+	var doc setupDocument
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return nil, fmt.Errorf("store JSON ungültig: %w", err)
+	}
+	if doc.Format != "" {
+		if doc.Format != setupFormat {
+			return nil, fmt.Errorf("unbekanntes Einrichtungsformat %q", doc.Format)
+		}
+		if doc.FormatVersion != setupFormatVersion {
+			return nil, fmt.Errorf("nicht unterstützte Formatversion %d", doc.FormatVersion)
+		}
+	}
+	return &Store{
+		Employees:   doc.Employees,
+		YearConfigs: doc.YearConfigs,
+	}, nil
+}
+
+func (s *Store) IsEmpty() bool {
+	if s == nil {
+		return true
+	}
+	return len(s.Employees) == 0 && len(s.YearConfigs) == 0
 }
 
 func Load(dir string) (*Store, error) {

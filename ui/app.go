@@ -75,6 +75,7 @@ func BuildApp(a fyne.App, w fyne.Window) fyne.CanvasObject {
 	state.scroll = container.NewVScroll(newPlaceholder())
 
 	state.sidebar = NewSidebar(state)
+	state.installFileMenu()
 
 	split := container.NewHSplit(state.sidebar.Container, state.scroll)
 	split.SetOffset(0.25)
