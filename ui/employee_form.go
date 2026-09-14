@@ -219,7 +219,7 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 		)
 	})
 
-	generateBtn := widget.NewButton("Dienstplan erstellen", func() {
+	generateBtn := widget.NewButton("Stundenzettel erstellen", func() {
 		errs := validate()
 		if len(errs) > 0 {
 			dialog.ShowError(fmt.Errorf("%s", strings.Join(errs, "\n")), state.window)
@@ -250,7 +250,7 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 			}
 		}, state.window)
 		saveDialog.SetFilter(storage.NewExtensionFileFilter([]string{".xlsx"}))
-		saveDialog.SetFileName(fmt.Sprintf("Dienstplan_%s_%s.xlsx", updated.Name, model.FormatSchoolYearFile(updated.Year)))
+		saveDialog.SetFileName(fmt.Sprintf("Stundenzettel_%s_%s.xlsx", updated.Name, model.FormatSchoolYearFile(updated.Year)))
 		saveDialog.Show()
 	})
 

@@ -1,6 +1,6 @@
 [Details]
 Icon = "Icon.png"
-Name = "Kindergarten Dienstplan-Generator"
-ID = "com.example.kindergarten_dienstplan"
+Name = "Stundenzettel-Generator"
+ID = "io.github.matousjobanek.stundenzettel"
 Version = "1.0.0"
-Build = 32
+Build = 36

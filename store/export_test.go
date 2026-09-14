@@ -20,8 +20,10 @@ func TestExportJSONIsPortableEnvelope(t *testing.T) {
 		t.Fatal(err)
 	}
 	raw := string(data)
-	if strings.Contains(raw, "com.example") {
-		t.Fatalf("export must not contain an app ID: %s", raw)
+	for _, id := range []string{"com.example", "io.github.matousjobanek"} {
+		if strings.Contains(raw, id) {
+			t.Fatalf("export must not contain an app ID (%s): %s", id, raw)
+		}
 	}
 	var doc map[string]any
 	if err := json.Unmarshal(data, &doc); err != nil {
