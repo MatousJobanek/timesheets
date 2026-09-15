@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag matches FyneApp.toml Version
+        run: ./scripts/check-release-tag.sh "${GITHUB_REF_NAME}"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install fyne-cross
+        run: go install github.com/fyne-io/fyne-cross@v1.6.3
+
+      - name: Prepare Android signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for var in ANDROID_KEYSTORE_BASE64 ANDROID_KEY_ALIAS ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_PASSWORD; do
+            if [[ -z "${!var}" ]]; then
+              echo "missing secret ${var}" >&2
+              exit 1
+            fi
+          done
+          mkdir -p .secrets
+          printf '%s' "${ANDROID_KEYSTORE_BASE64}" | base64 -d > .secrets/android-release.jks
+          chmod 600 .secrets/android-release.jks
+          printf '%s\n' \
+            "ANDROID_KEY_ALIAS=${ANDROID_KEY_ALIAS}" \
+            "ANDROID_KEYSTORE_PASSWORD=${ANDROID_KEYSTORE_PASSWORD}" \
+            "ANDROID_KEY_PASSWORD=${ANDROID_KEY_PASSWORD}" \
+            > .secrets/github-secrets.env
+          chmod 600 .secrets/github-secrets.env
+
+      - name: Package Android
+        run: make package-android-signed FYNE_CROSS_ENGINE=docker FYNE_CROSS_EXTRA="-pull"
+
+      - name: Package Windows
+        run: make package-windows FYNE_CROSS_ENGINE=docker FYNE_CROSS_EXTRA="-pull -arch amd64"
+
+      - name: Collect assets
+        run: ./scripts/collect-release-assets.sh release-assets
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/Stundenzettel-Generator.apk
+            release-assets/Stundenzettel-Generator-windows.zip
+          generate_release_notes: true

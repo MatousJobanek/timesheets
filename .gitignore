@@ -27,6 +27,12 @@ coverage.html
 .DS_Store
 Thumbs.db
 
+# Release signing (never commit)
+.secrets/
+
+# Local copy of GitHub Release artifacts
+release-assets/
+
 # Generated output
 *.xlsx
 
