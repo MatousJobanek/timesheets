@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"strconv"
 	"strings"
 
 	"timesheets/model"
@@ -11,73 +10,59 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func strToInt(s string) int {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return 0
-	}
-	v, _ := strconv.Atoi(s)
-	return v
-}
-
-func intToStr(v int) string {
-	return strconv.Itoa(v)
-}
-
 var dayLabels = []string{"Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"}
 
 type WorkingHoursGrid struct {
-	Container    fyne.CanvasObject
-	StartEntries [5]*widget.Entry
-	HoursEntries [5]*widget.Entry
-	MinEntries   [5]*widget.Entry
-	OnChanged    func()
+	Container fyne.CanvasObject
+	Begin1    [5]*widget.Entry
+	End1      [5]*widget.Entry
+	Begin2    [5]*widget.Entry
+	End2      [5]*widget.Entry
+	OnChanged func()
 }
 
 func NewWorkingHoursGrid() *WorkingHoursGrid {
 	g := &WorkingHoursGrid{}
 
-	header := container.NewGridWithColumns(4,
+	header := container.NewGridWithColumns(5,
 		widget.NewLabel("Tag"),
-		widget.NewLabel("Beginn (HH:MM)"),
-		widget.NewLabel("Stunden"),
-		widget.NewLabel("Minuten"),
+		widget.NewLabel("Beginn 1"),
+		widget.NewLabel("Ende 1"),
+		widget.NewLabel("Beginn 2"),
+		widget.NewLabel("Ende 2"),
 	)
 
 	rows := []fyne.CanvasObject{header}
 
 	for i := 0; i < 5; i++ {
-		g.StartEntries[i] = widget.NewEntry()
-		g.StartEntries[i].SetPlaceHolder("HH:MM")
-		g.StartEntries[i].OnChanged = func(_ string) {
-			if g.OnChanged != nil {
-				g.OnChanged()
-			}
-		}
-		g.HoursEntries[i] = widget.NewEntry()
-		g.HoursEntries[i].OnChanged = func(_ string) {
-			if g.OnChanged != nil {
-				g.OnChanged()
-			}
-		}
-		g.MinEntries[i] = widget.NewEntry()
-		g.MinEntries[i].OnChanged = func(_ string) {
-			if g.OnChanged != nil {
-				g.OnChanged()
-			}
-		}
+		g.Begin1[i] = g.newTimeEntry()
+		g.End1[i] = g.newTimeEntry()
+		g.Begin2[i] = g.newTimeEntry()
+		g.End2[i] = g.newTimeEntry()
 
-		row := container.NewGridWithColumns(4,
+		row := container.NewGridWithColumns(5,
 			widget.NewLabel(dayLabels[i]),
-			g.StartEntries[i],
-			g.HoursEntries[i],
-			g.MinEntries[i],
+			g.Begin1[i],
+			g.End1[i],
+			g.Begin2[i],
+			g.End2[i],
 		)
 		rows = append(rows, row)
 	}
 
 	g.Container = container.NewVBox(rows...)
 	return g
+}
+
+func (g *WorkingHoursGrid) newTimeEntry() *widget.Entry {
+	e := widget.NewEntry()
+	e.SetPlaceHolder("HH:MM")
+	e.OnChanged = func(_ string) {
+		if g.OnChanged != nil {
+			g.OnChanged()
+		}
+	}
+	return e
 }
 
 func (g *WorkingHoursGrid) GetSchedule() model.WeekSchedule {
@@ -93,24 +78,18 @@ func (g *WorkingHoursGrid) GetSchedule() model.WeekSchedule {
 func (g *WorkingHoursGrid) SetSchedule(ws model.WeekSchedule) {
 	schedules := []model.DaySchedule{ws.Monday, ws.Tuesday, ws.Wednesday, ws.Thursday, ws.Friday}
 	for i, ds := range schedules {
-		g.StartEntries[i].SetText(ds.StartTime)
-		if ds.TotalMinutes == 0 {
-			g.HoursEntries[i].SetText("")
-			g.MinEntries[i].SetText("")
-		} else {
-			g.HoursEntries[i].SetText(intToStr(ds.TotalMinutes / 60))
-			g.MinEntries[i].SetText(intToStr(ds.TotalMinutes % 60))
-		}
+		g.Begin1[i].SetText(ds.Begin1)
+		g.End1[i].SetText(ds.End1)
+		g.Begin2[i].SetText(ds.Begin2)
+		g.End2[i].SetText(ds.End2)
 	}
 }
 
 func (g *WorkingHoursGrid) getDaySchedule(idx int) model.DaySchedule {
-	start := g.StartEntries[idx].Text
-	hours := strToInt(g.HoursEntries[idx].Text)
-	mins := strToInt(g.MinEntries[idx].Text)
-	total := hours*60 + mins
 	return model.DaySchedule{
-		StartTime:    start,
-		TotalMinutes: total,
+		Begin1: strings.TrimSpace(g.Begin1[idx].Text),
+		End1:   strings.TrimSpace(g.End1[idx].Text),
+		Begin2: strings.TrimSpace(g.Begin2[idx].Text),
+		End2:   strings.TrimSpace(g.End2[idx].Text),
 	}
 }

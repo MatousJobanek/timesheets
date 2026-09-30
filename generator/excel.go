@@ -2,6 +2,7 @@ package generator
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/xuri/excelize/v2"
@@ -87,7 +88,7 @@ func writeSheet(f *excelize.File, sheet string, emp model.Employee, month time.M
 			anmerkung = label
 		} else {
 			schedule := resolveSchedule(emp, date)
-			if schedule.TotalMinutes > 0 {
+			if schedule.Works() {
 				writeTimeBlocks(f, sheet, row, schedule)
 			}
 		}
@@ -153,24 +154,19 @@ func writeSheet(f *excelize.File, sheet string, emp model.Employee, month time.M
 }
 
 func writeTimeBlocks(f *excelize.File, sheet string, row int, sched model.DaySchedule) {
-	startH, startM := parseTime(sched.StartTime)
-	startMinutes := startH*60 + startM
+	writeClock(f, sheet, 2, row, sched.Begin1)
+	writeClock(f, sheet, 3, row, sched.End1)
+	writeClock(f, sheet, 4, row, sched.Begin2)
+	writeClock(f, sheet, 5, row, sched.End2)
+}
 
-	if sched.TotalMinutes <= 360 {
-		endMinutes := startMinutes + sched.TotalMinutes
-		f.SetCellValue(sheet, cellRef(2, row), timeToExcel(startMinutes))
-		f.SetCellValue(sheet, cellRef(3, row), timeToExcel(endMinutes))
+func writeClock(f *excelize.File, sheet string, col, row int, hhmm string) {
+	hhmm = strings.TrimSpace(hhmm)
+	if hhmm == "" {
 		return
 	}
-
-	end1Minutes := startMinutes + 240
-	begin2Minutes := end1Minutes + 30
-	end2Minutes := begin2Minutes + (sched.TotalMinutes - 240)
-
-	f.SetCellValue(sheet, cellRef(2, row), timeToExcel(startMinutes))
-	f.SetCellValue(sheet, cellRef(3, row), timeToExcel(end1Minutes))
-	f.SetCellValue(sheet, cellRef(4, row), timeToExcel(begin2Minutes))
-	f.SetCellValue(sheet, cellRef(5, row), timeToExcel(end2Minutes))
+	h, m := parseTime(hhmm)
+	f.SetCellValue(sheet, cellRef(col, row), timeToExcel(h*60+m))
 }
 
 func stundenFormula(row int) string {

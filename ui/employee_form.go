@@ -19,6 +19,53 @@ import (
 var empTimeRegex = regexp.MustCompile(`^\d{1,2}:\d{2}$`)
 var empDateRegex = regexp.MustCompile(`^\d{1,2}\.\d{1,2}\.?$`)
 
+type clockPair struct {
+	begin int
+	end   int
+}
+
+// validateTimePair checks one from–to pair. Both fields empty is valid and returns ok=false.
+// A partial pair, a bad clock, or an end that is not after the start appends an error.
+func validateTimePair(errs *[]string, prefix, day, beginLabel, endLabel, begin, end string) (clockPair, bool) {
+	if begin == "" && end == "" {
+		return clockPair{}, false
+	}
+	if begin == "" || end == "" {
+		*errs = append(*errs, fmt.Sprintf("%s%s: %s und %s müssen beide ausgefüllt sein", prefix, day, beginLabel, endLabel))
+		return clockPair{}, false
+	}
+	b, bok := parseClock(begin)
+	e, eok := parseClock(end)
+	if !bok {
+		*errs = append(*errs, fmt.Sprintf("%s%s: %s muss im Format HH:MM sein", prefix, day, beginLabel))
+	}
+	if !eok {
+		*errs = append(*errs, fmt.Sprintf("%s%s: %s muss im Format HH:MM sein", prefix, day, endLabel))
+	}
+	if !bok || !eok {
+		return clockPair{}, false
+	}
+	if e <= b {
+		*errs = append(*errs, fmt.Sprintf("%s%s: %s muss nach %s liegen", prefix, day, endLabel, beginLabel))
+		return clockPair{}, false
+	}
+	return clockPair{begin: b, end: e}, true
+}
+
+func parseClock(s string) (int, bool) {
+	if !empTimeRegex.MatchString(s) {
+		return 0, false
+	}
+	var h, m int
+	if _, err := fmt.Sscanf(s, "%d:%d", &h, &m); err != nil {
+		return 0, false
+	}
+	if h > 23 || m > 59 {
+		return 0, false
+	}
+	return h*60 + m, true
+}
+
 func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 	dirty := false
 	saveBtn := widget.NewButton("Speichern", nil)
@@ -126,22 +173,24 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 
 		validateGrid := func(g *WorkingHoursGrid, prefix string) {
 			for i := 0; i < 5; i++ {
-				start := g.StartEntries[i].Text
-				hours := g.HoursEntries[i].Text
-				mins := g.MinEntries[i].Text
+				day := dayLabels[i]
+				begin1 := strings.TrimSpace(g.Begin1[i].Text)
+				end1 := strings.TrimSpace(g.End1[i].Text)
+				begin2 := strings.TrimSpace(g.Begin2[i].Text)
+				end2 := strings.TrimSpace(g.End2[i].Text)
 
-				h := strToInt(hours)
-				m := strToInt(mins)
-				total := h*60 + m
-
-				if total == 0 && start == "" {
+				if begin1 == "" && end1 == "" && begin2 == "" && end2 == "" {
 					continue
 				}
-				if total > 0 && !empTimeRegex.MatchString(start) {
-					errs = append(errs, fmt.Sprintf("%s%s: Beginn muss im Format HH:MM sein", prefix, dayLabels[i]))
+
+				b1, ok1 := validateTimePair(&errs, prefix, day, "Beginn 1", "Ende 1", begin1, end1)
+				b2, ok2 := validateTimePair(&errs, prefix, day, "Beginn 2", "Ende 2", begin2, end2)
+
+				if (begin2 != "" || end2 != "") && begin1 == "" && end1 == "" {
+					errs = append(errs, fmt.Sprintf("%s%s: Beginn 2 erfordert Beginn 1 und Ende 1", prefix, day))
 				}
-				if strToInt(hours) < 0 || strToInt(mins) < 0 {
-					errs = append(errs, fmt.Sprintf("%s%s: Stunden/Minuten dürfen nicht negativ sein", prefix, dayLabels[i]))
+				if ok1 && ok2 && b2.begin < b1.end {
+					errs = append(errs, fmt.Sprintf("%s%s: Beginn 2 darf nicht vor Ende 1 liegen", prefix, day))
 				}
 			}
 		}
@@ -165,18 +214,18 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 			if toText == "" {
 				toText = fromText
 			}
-		if empDateRegex.MatchString(fromText) && empDateRegex.MatchString(toText) {
-			from, e1 := model.ParseDDMMInSchoolYear(fromText, emp.Year)
-			to, e2 := model.ParseDDMMInSchoolYear(toText, emp.Year)
-			if e1 == nil && e2 == nil {
-				if from.After(to) {
-					to = to.AddDate(1, 0, 0)
-				}
-				if from.After(to) {
-					errs = append(errs, fmt.Sprintf("Freie Tage #%d: Von muss vor Bis liegen", i+1))
+			if empDateRegex.MatchString(fromText) && empDateRegex.MatchString(toText) {
+				from, e1 := model.ParseDDMMInSchoolYear(fromText, emp.Year)
+				to, e2 := model.ParseDDMMInSchoolYear(toText, emp.Year)
+				if e1 == nil && e2 == nil {
+					if from.After(to) {
+						to = to.AddDate(1, 0, 0)
+					}
+					if from.After(to) {
+						errs = append(errs, fmt.Sprintf("Freie Tage #%d: Von muss vor Bis liegen", i+1))
+					}
 				}
 			}
-		}
 		}
 
 		return errs

@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type Employee struct {
 	ID                  string       `json:"id"`
@@ -27,7 +30,7 @@ type WeekSchedule struct {
 }
 
 // ForDay returns the DaySchedule for the given weekday.
-// Returns a zero-value DaySchedule (TotalMinutes=0) for Saturday/Sunday.
+// Returns a zero-value DaySchedule for Saturday and Sunday.
 func (ws WeekSchedule) ForDay(d time.Weekday) DaySchedule {
 	switch d {
 	case time.Monday:
@@ -46,8 +49,16 @@ func (ws WeekSchedule) ForDay(d time.Weekday) DaySchedule {
 }
 
 type DaySchedule struct {
-	StartTime    string `json:"start_time"`    // "07:00" (HH:MM format)
-	TotalMinutes int    `json:"total_minutes"` // 480 = 8h, 260 = 4h20m, 0 = not working
+	Begin1 string `json:"begin_1,omitempty"` // "07:00"
+	End1   string `json:"end_1,omitempty"`
+	Begin2 string `json:"begin_2,omitempty"`
+	End2   string `json:"end_2,omitempty"`
+}
+
+// Works reports whether the first from–to pair is filled.
+// The second pair is an optional later block; the gap between them is the break.
+func (d DaySchedule) Works() bool {
+	return strings.TrimSpace(d.Begin1) != "" && strings.TrimSpace(d.End1) != ""
 }
 
 type DateRange struct {
