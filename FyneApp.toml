@@ -2,5 +2,5 @@
 Icon = "Icon.png"
 Name = "Stundenzettel-Generator"
 ID = "io.github.matousjobanek.stundenzettel"
-Version = "1.0.1"
-Build = 44
+Version = "1.0.2"
+Build = 45
