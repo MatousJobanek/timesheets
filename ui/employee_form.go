@@ -164,6 +164,7 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 			updated.WeekSchedule = normalGrid.GetSchedule()
 		}
 		updated.FreePeriodOverrides = overridesInput.GetDateRanges()
+		updated.ExportFormat = emp.ExportFormat
 		return updated
 	}
 
@@ -268,6 +269,16 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 		)
 	})
 
+	const formatStandard = "Standard"
+	const formatSimple = "Einfach (Stundenliste)"
+	formatChoice := widget.NewRadioGroup([]string{formatStandard, formatSimple}, nil)
+	formatChoice.Horizontal = true
+	if emp.ExportFormat == model.ExportFormatSimple {
+		formatChoice.SetSelected(formatSimple)
+	} else {
+		formatChoice.SetSelected(formatStandard)
+	}
+
 	generateBtn := widget.NewButton("Stundenzettel erstellen", func() {
 		errs := validate()
 		if len(errs) > 0 {
@@ -282,7 +293,19 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 		}
 		merged := store.MergeFreePeriods(shared, updated.FreePeriodOverrides)
 
-		xlFile, err := generator.Generate(updated, merged)
+		open := generator.Generate
+		filePrefix := "Stundenzettel"
+		emp.ExportFormat = ""
+		if formatChoice.Selected == formatSimple {
+			open = generator.GenerateSimple
+			filePrefix = "Stundenliste"
+			emp.ExportFormat = model.ExportFormatSimple
+		}
+		if err := state.saveStore(); err != nil {
+			dialog.ShowError(err, state.window)
+			return
+		}
+		xlFile, err := open(updated, merged)
 		if err != nil {
 			dialog.ShowError(err, state.window)
 			return
@@ -299,7 +322,7 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 			}
 		}, state.window)
 		saveDialog.SetFilter(storage.NewExtensionFileFilter([]string{".xlsx"}))
-		saveDialog.SetFileName(fmt.Sprintf("Stundenzettel_%s_%s.xlsx", updated.Name, model.FormatSchoolYearFile(updated.Year)))
+		saveDialog.SetFileName(fmt.Sprintf("%s_%s_%s.xlsx", filePrefix, updated.Name, model.FormatSchoolYearFile(updated.Year)))
 		saveDialog.Show()
 	})
 
@@ -319,10 +342,13 @@ func NewEmployeeForm(state *AppState, emp *model.Employee) fyne.CanvasObject {
 	)
 
 	section5 := widget.NewCard("Aktionen", "",
-		container.NewGridWithColumns(3,
-			saveBtn,
-			deleteBtn,
-			generateBtn,
+		container.NewVBox(
+			formatChoice,
+			container.NewGridWithColumns(3,
+				saveBtn,
+				deleteBtn,
+				generateBtn,
+			),
 		),
 	)
 

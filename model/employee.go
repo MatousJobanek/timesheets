@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+// ExportFormatSimple is the Stundenliste layout. An empty ExportFormat means
+// the detailed Stundenzettel, including employees saved before the choice existed.
+const ExportFormatSimple = "simple"
+
 type Employee struct {
 	ID                  string       `json:"id"`
 	Name                string       `json:"name"`
@@ -14,6 +18,7 @@ type Employee struct {
 	EvenSchedule        WeekSchedule `json:"even_schedule"`
 	OddSchedule         WeekSchedule `json:"odd_schedule"`
 	FreePeriodOverrides []DateRange  `json:"free_period_overrides"`
+	ExportFormat        string       `json:"export_format,omitempty"`
 }
 
 type YearConfig struct {
